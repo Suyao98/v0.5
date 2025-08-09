@@ -436,99 +436,145 @@ if mode == "阳历生日":
     gender = st.selectbox("性别", options=["男", "女"], index=0)
 
     if st.button("查询吉凶"):
-        if bhour != -1 and use_true_solar:
-            coords = find_city_coords(city_input)
-            if coords is None:
-                st.warning(f"未找到城市“{city_input}”经纬度，默认使用东经120度")
-                lon = 120.0
-            else:
-                lon = coords[1]
-            adj_hour, adj_min = corrected_hour_minute(bhour, bmin, lon)
+    if bhour != -1 and use_true_solar:
+        coords = find_city_coords(city_input)
+        if coords is None:
+            st.warning(f"未找到城市“{city_input}”经纬度，默认使用东经120度")
+            lon = 120.0
         else:
-            adj_hour, adj_min = bhour, bmin
+            lon = coords[1]
+        adj_hour, adj_min = corrected_hour_minute(bhour, bmin, lon)
+    else:
+        adj_hour, adj_min = bhour, bmin
 
-        hour_val = None if bhour == -1 else adj_hour
-        min_val = None if bhour == -1 else adj_min
+    hour_val = None if bhour == -1 else adj_hour
+    min_val = None if bhour == -1 else adj_min
 
-        try:
-            year_p, adj_year = year_ganzhi(byear, bmonth, bday, hour_val or 0, min_val or 0)
-            day_p = day_ganzhi_by_anchor(byear, bmonth, bday, hour_val)
-            mb = get_month_branch(byear, bmonth, bday)
-            month_p = month_stem_by_fihu_dun(year_p[0], mb)
-            hour_p = "不知道" if hour_val is None else time_ganzhi_by_rule(day_p, hour_val, min_val or 0)
+    try:
+        year_p, adj_year = year_ganzhi(byear, bmonth, bday, hour_val or 0, min_val or 0)
+        day_p = day_ganzhi_by_anchor(byear, bmonth, bday, hour_val)
+        mb = get_month_branch(byear, bmonth, bday)
+        month_p = month_stem_by_fihu_dun(year_p[0], mb)
+        hour_p = "不知道" if hour_val is None else time_ganzhi_by_rule(day_p, hour_val, min_val or 0)
 
-            st.markdown("## 四柱八字")
-            render_four_pillars_two_rows(year_p, month_p, day_p, hour_p)
+        st.markdown("## 四柱八字")
+        render_four_pillars_two_rows(year_p, month_p, day_p, hour_p)
 
-            ji, xiong = analyze_bazi(year_p, month_p, day_p, hour_p)
-            st.markdown("---")
-            show_jixiong(ji, xiong, byear)
+        ji, xiong = analyze_bazi(year_p, month_p, day_p, hour_p)
+        st.markdown("---")
+        show_jixiong(ji, xiong, byear)
 
-            # --- 新增大运计算和展示 ---
+        # --------- 大运计算 ---------
 
-            # 计算起运岁数
-            birth_date = datetime.date(byear, bmonth, bday)
+        birth_date = datetime.date(byear, bmonth, bday)
 
-            def get_day_diff_to_next_jieqi(birth_date):
-                # 这里简化，只以“清明”节气4月5日举例，建议用你已有节气函数替换
-                jieqi_date = datetime.date(birth_date.year, 4, 5)
-                if birth_date > jieqi_date:
-                    jieqi_date = datetime.date(birth_date.year + 1, 4, 5)
-                return (jieqi_date - birth_date).days
+        # 你可以用现有节气函数，这里用简易模拟：24节气月份和大致日期（仅示例）
+        JIEQI_LIST = [
+            (2, 4),  # 立春
+            (2, 19), # 雨水
+            (3, 6),  # 惊蛰
+            (3, 21), # 春分
+            (4, 5),  # 清明
+            (4, 20), # 谷雨
+            (5, 6),  # 立夏
+            (5, 21), # 小满
+            (6, 6),  # 芒种
+            (6, 21), # 夏至
+            (7, 7),  # 小暑
+            (7, 22), # 大暑
+            (8, 8),  # 立秋
+            (8, 23), # 处暑
+            (9, 8),  # 白露
+            (9, 23), # 秋分
+            (10, 8), # 寒露
+            (10, 23),# 霜降
+            (11, 7), # 立冬
+            (11, 22),# 小雪
+            (12, 7), # 大雪
+            (12, 22),# 冬至
+            (1, 6),  # 小寒
+            (1, 20), # 大寒
+        ]
 
-            def calc_start_age(birth_date, birth_hour=0):
-                day_diff = get_day_diff_to_next_jieqi(birth_date)
-                # 时辰换算，1时辰=10天，按小时折算为10/2=5天/小时的简易估算
-                extra_days = birth_hour * 5
-                total_days = day_diff + extra_days
-                start_age = int(total_days // 3)
-                return max(start_age, 0)
-
-            def is_yang_gan(gan):
-                return gan in ["甲", "丙", "戊", "庚", "壬"]
-
-            def gen_dayun_list(month_pillar, gender):
-                # 60甲子列表复用你代码里的GZS_LIST
+        def get_next_jieqi(date):
+            year = date.year
+            for m, d in JIEQI_LIST:
                 try:
-                    start_idx = GZS_LIST.index(month_pillar)
-                except ValueError:
-                    return []
+                    jq_date = datetime.date(year if m != 1 else year + 1, m, d)
+                except:
+                    continue
+                if date < jq_date:
+                    return jq_date
+            return datetime.date(year + 1, 2, 4)  # 如果没找到，返回立春
 
-                year_gan = month_pillar[0]
-                yang = is_yang_gan(year_gan)
+        def get_prev_jieqi(date):
+            year = date.year
+            for m, d in reversed(JIEQI_LIST):
+                try:
+                    jq_date = datetime.date(year if m != 1 else year + 1, m, d)
+                except:
+                    continue
+                if date >= jq_date:
+                    return jq_date
+            return datetime.date(year - 1, 12, 22)  # 冬至
 
-                if yang:
-                    direction = 1 if gender == "男" else -1
+        def calc_start_age(birth_date, year_gan, gender, birth_hour=0):
+            # 判断阴阳年干
+            yang_gans = ["甲", "丙", "戊", "庚", "壬"]
+            is_yang = year_gan in yang_gans
+
+            # 顺排还是逆排
+            if is_yang:
+                direction = 1 if gender == "男" else -1
+            else:
+                direction = -1 if gender == "男" else 1
+
+            if direction == 1:  # 顺排，出生到下个节气天数
+                next_jq = get_next_jieqi(birth_date)
+                diff_days = (next_jq - birth_date).days
+            else:  # 逆排，出生到上个节气天数
+                prev_jq = get_prev_jieqi(birth_date)
+                diff_days = (birth_date - prev_jq).days
+
+            # 时辰换算成天数，10天=1时辰，折算为小时约0.42天/小时
+            diff_days += birth_hour * 10 / 24
+
+            start_age_int = int(diff_days // 3)
+            remainder_days = diff_days % 3
+            # 余数换算为月份(余1天约4个月，按比例)
+            extra_months = int((remainder_days / 3) * 12)
+
+            return start_age_int, extra_months, direction
+
+        def generate_dayun_list(month_pillar, direction):
+            try:
+                idx = GZS_LIST.index(month_pillar)
+            except ValueError:
+                return []
+
+            dayun = []
+            for i in range(8):
+                if direction == 1:
+                    idx = (idx + 1) % 60
                 else:
-                    direction = -1 if gender == "男" else 1
+                    idx = (idx - 1) % 60
+                dayun.append(GZS_LIST[idx])
+            return dayun
 
-                dayun = []
-                idx = start_idx
-                for _ in range(8):
-                    idx = (idx + direction) % 60
-                    dayun.append(GZS_LIST[idx])
-                return dayun
+        start_age, extra_months, dayun_direction = calc_start_age(birth_date, year_p[0], gender, hour_val or 0)
+        dayun_list = generate_dayun_list(month_p, dayun_direction)
 
-            def format_dayun_ranges(start_age, dayun_list):
-                res = []
-                age = start_age
-                for gz in dayun_list:
-                    res.append(f"{age}-{age+9}岁：{gz}")
-                    age += 10
-                return res
+        st.markdown("## 大运排盘")
+        st.markdown(f"月柱（起运干支）: {month_p}")
+        st.markdown(f"起运年龄：{start_age}岁{extra_months}个月")
+        for i, gz in enumerate(dayun_list):
+            age_start = start_age + i * 10
+            age_end = age_start + 9
+            st.markdown(f"{age_start}-{age_end}岁：{gz}")
 
-            start_age = calc_start_age(birth_date, hour_val or 0)
-            dayun_list = gen_dayun_list(month_p, gender)
-            dayun_ranges = format_dayun_ranges(start_age, dayun_list)
+    except Exception as e:
+        st.error(f"计算出错：{e}")
 
-            st.markdown("## 大运排盘")
-            st.markdown(f"月柱（起运干支）: {month_p}")
-            st.markdown(f"起运年龄：{start_age}岁")
-            for item in dayun_ranges:
-                st.markdown(item)
-
-        except Exception as e:
-            st.error(f"计算出错：{e}")
 
 elif mode == "四柱八字":
     nianzhu = st.text_input("年柱", max_chars=2)
