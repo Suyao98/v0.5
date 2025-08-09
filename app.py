@@ -435,7 +435,7 @@ if mode == "阳历生日":
     # **新增 性别选择**
     gender = st.selectbox("性别", options=["男", "女"], index=0)
 
-    if st.button("查询吉凶"):
+if st.button("查询吉凶"):
     if bhour != -1 and use_true_solar:
         coords = find_city_coords(city_input)
         if coords is None:
@@ -447,6 +447,7 @@ if mode == "阳历生日":
     else:
         adj_hour, adj_min = bhour, bmin
 
+    # 后续所有代码块也要在if按钮里面缩进
     hour_val = None if bhour == -1 else adj_hour
     min_val = None if bhour == -1 else adj_min
 
