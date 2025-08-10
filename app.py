@@ -940,8 +940,7 @@ try:
 except Exception as e:
     st.error(f"计算出错：{e}")
 
-
-        # 改为左右两栏显示吉凶流年
+ # 改为左右两栏显示吉凶流年
         col_ji, col_xiong = st.columns(2)
 
         with col_ji:
@@ -1065,4 +1064,6 @@ elif mode == "四柱八字" and query_trigger:
 
     except Exception as e:
         st.error(f"计算出错：{e}")
+
+
 
