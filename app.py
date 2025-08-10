@@ -737,7 +737,7 @@ with col1:
 with col2:
     # 输入区域，根据mode显示
     if mode == "阳历生日":
-        col21, col22, col23 = st.columns([1,1,1])
+        col21, col22, col23, col24 = st.columns([1,1,1,1])
         with col21:
             byear = st.number_input("出生年", min_value=1900, max_value=2100, value=1990, step=1)
         with col22:
