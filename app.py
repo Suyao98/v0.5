@@ -593,13 +593,24 @@ JIEQI = [
     (12,7,"子"), (1,6,"丑"),
 ]
 def get_month_branch(year, month, day):
+    """近似节气推算月支（修正立春前不提前到寅月的错误）"""
     bd = date(year, month, day)
-    for i,(m,d,branch) in enumerate(JIEQI):
+    for i, (m, d, branch) in enumerate(JIEQI):
+        # 当前节气日期
         dt = date(year if m != 1 else year+1, m, d)
-        dt_next = date(year if JIEQI[(i+1)%12][0] != 1 else year+1, JIEQI[(i+1)%12][0], JIEQI[(i+1)%12][1])
+
+        # 下一个节气日期
+        nm, nd, _ = JIEQI[(i+1) % 12]
+        dt_next = date(year if nm != 1 else year+1, nm, nd)
+
+        # 关键修正：
+        # 如果当前节气是 (2, 4, "寅") 立春，且生日 < 2月4日，则仍归前一节气（上一年腊月/丑月）
+        if branch == "寅" and (month < 2 or (month == 2 and day < 4)):
+            return "丑"
+
         if dt <= bd < dt_next:
             return branch
-    return "寅"
+    return "寅"  # 默认
 
 def month_stem_by_fihu_dun(year_tg, month_branch):
     if year_tg in ("甲","己"): first = "丙"
