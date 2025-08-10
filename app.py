@@ -867,7 +867,10 @@ with col3:
         shizhu = st.text_input("时柱", max_chars=2)
         start_year = st.number_input("用于列出吉凶年份的起始年（例如出生年）", min_value=1600, max_value=2100, value=1990, step=1)
 
-# 按钮触发计算放这里
+# 默认值，避免未定义
+hour_val = None
+min_val = None
+
 if mode == "阳历生日" and query_trigger:
     if bhour != -1 and use_true_solar:
         coords = find_city_coords(city_input)
@@ -883,18 +886,19 @@ if mode == "阳历生日" and query_trigger:
     hour_val = None if bhour == -1 else adj_hour
     min_val = None if bhour == -1 else adj_min
 
-try:
-    # 1. 计算四柱八字
-    year_p, adj_year = year_ganzhi(byear, bmonth, bday, hour_val or 0, min_val or 0)
-    day_p = day_ganzhi_by_anchor(byear, bmonth, bday, hour_val)
-    mb = get_month_branch(byear, bmonth, bday)
-    month_p = month_stem_by_fihu_dun(year_p[0], mb)
-    hour_p = "不知道" if hour_val is None else time_ganzhi_by_rule(day_p, hour_val, min_val or 0)
+if query_trigger:
+    try:
+        # 使用hour_val和min_val前确保byear,bmonth,bday等变量都已定义
+        year_p, adj_year = year_ganzhi(byear, bmonth, bday, hour_val or 0, min_val or 0)
+        day_p = day_ganzhi_by_anchor(byear, bmonth, bday, hour_val)
+        mb = get_month_branch(byear, bmonth, bday)
+        month_p = month_stem_by_fihu_dun(year_p[0], mb)
+        hour_p = "不知道" if hour_val is None else time_ganzhi_by_rule(day_p, hour_val, min_val or 0)
 
-    st.markdown("## 四柱八字")
-    render_four_pillars_two_rows(year_p, month_p, day_p, hour_p)
+        st.markdown("## 四柱八字")
+        render_four_pillars_two_rows(year_p, month_p, day_p, hour_p)
 
-    ji, xiong = analyze_bazi(year_p, month_p, day_p, hour_p)
+        ji, xiong = analyze_bazi(year_p, month_p, day_p, hour_p)
 
     # 2. 大运计算
     birth_date = datetime.date(byear, bmonth, bday)
