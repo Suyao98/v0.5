@@ -811,14 +811,12 @@ st.title("流年吉凶")
 col1, col2, col3 = st.columns([2, 3, 7])
 
 with col1:
-    st.markdown("**请选择**")
-
     mode = st.radio("", ["阳历生日", "四柱八字"], horizontal=True)
 
     # 把时辰未知、真太阳时、性别和按钮放这里
     if mode == "阳历生日":
-        unknown_time = st.checkbox("时辰未知", value=False)
-        use_true_solar = st.checkbox("真太阳时修正", value=False)
+        unknown_time = st.checkbox("时辰未知（跳过时柱）", value=False)
+        use_true_solar = st.checkbox("使用真太阳时修正", value=False)
         gender = st.selectbox("性别", ["男", "女"], index=0)
         if st.button("查询吉凶"):
             query_trigger = True
