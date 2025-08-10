@@ -710,98 +710,6 @@ def corrected_hour_minute(hour, minute, longitude):
     adj_hour = int(total_minutes // 60)
     adj_min = int(total_minutes % 60)
     return adj_hour, adj_min
-
-# ========== 大运函数（保持你原有逻辑，仅妥善集成） ==========
-def is_strict_double_he(gz1, gz2):
-    gan_he_pairs = [("甲","己"),("己","甲"),("乙","庚"),("庚","乙"),
-                    ("丙","辛"),("辛","丙"),("丁","壬"),("壬","丁"),
-                    ("戊","癸"),("癸","戊")]
-    dz_he_pairs = [("子","丑"),("丑","子"),("寅","亥"),("亥","寅"),
-                   ("卯","戌"),("戌","卯"),("辰","酉"),("酉","辰"),
-                   ("巳","申"),("申","巳"),("午","未"),("未","午")]
-    if not gz1 or not gz2 or len(gz1) < 2 or len(gz2) < 2:
-        return False
-    gan1, dz1 = gz1[0], gz1[1]
-    gan2, dz2 = gz2[0], gz2[1]
-    return (gan1, gan2) in gan_he_pairs and (dz1, dz2) in dz_he_pairs
-
-def is_strict_double_chong(gz1, gz2):
-    dz_chong_pairs = [("子","午"),("午","子"),
-                      ("丑","未"),("未","丑"),
-                      ("寅","申"),("申","寅"),
-                      ("卯","酉"),("酉","卯"),
-                      ("辰","戌"),("戌","辰"),
-                      ("巳","亥"),("亥","巳")]
-    if not gz1 or not gz2 or len(gz1) < 2 or len(gz2) < 2:
-        return False
-    dz1, dz2 = gz1[1], gz2[1]
-    return (dz1, dz2) in dz_chong_pairs
-
-def generate_dayun_list(year_gan, gender, month_pillar, forward=True, steps=8):
-    if month_pillar not in GZS_LIST:
-        # defensive: if month_pillar not in list (bad input), try to fallback to index 0
-        base_index = 0
-    else:
-        base_index = GZS_LIST.index(month_pillar)
-    result = []
-    for i in range(steps):
-        idx = (base_index + i + 1) % 60 if forward else (base_index - (i+1)) % 60
-        result.append(GZS_LIST[idx])
-    return result
-
-def calc_qiyun_age_by_terms(birth_date, gender, year_gan, solar_terms_dates):
-    yang_gans = ["甲","丙","戊","庚","壬"]
-    is_yang_year = year_gan in yang_gans
-    if (is_yang_year and gender == "男") or (not is_yang_year and gender == "女"):
-        forward = True
-    else:
-        forward = False
-
-    terms_sorted = sorted(solar_terms_dates)
-    if forward:
-        next_terms = [d for d in terms_sorted if d > birth_date]
-        if not next_terms:
-            next_term = terms_sorted[0].replace(year=birth_date.year+1)
-        else:
-            next_term = next_terms[0]
-        delta_days = (next_term - birth_date).days
-    else:
-        prev_terms = [d for d in terms_sorted if d <= birth_date]
-        if not prev_terms:
-            prev_term = terms_sorted[-1].replace(year=birth_date.year-1)
-        else:
-            prev_term = prev_terms[-1]
-        delta_days = (birth_date - prev_term).days
-
-    years = int(delta_days // 3)
-    rem = delta_days % 3
-    months = int((rem / 3.0) * 12)
-    return forward, years, months
-
-def show_dayun_two_rows(dayun_list, start_age, birth_year, ji_list, xiong_list, year_p, month_p, day_p, hour_p):
-    labels = []
-    years = []
-    for i, gz in enumerate(dayun_list):
-        seg_start = birth_year + start_age + i*10
-        seg_end = seg_start + 9
-        label = gz
-        if any(is_strict_double_he(gz, p) for p in [year_p, month_p, day_p, hour_p] if p and len(p)==2):
-            label += "（双合）"
-            if gz not in ji_list: ji_list.append(gz)
-        if any(is_strict_double_chong(gz, p) for p in [year_p, month_p, day_p, hour_p] if p and len(p)==2):
-            label += "（双冲）"
-            if gz not in xiong_list: xiong_list.append(gz)
-        labels.append(label)
-        years.append(f"{seg_start}-{seg_end}")
-    html_upper = "<div style='display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px;'>"
-    for lab in labels:
-        html_upper += f"<div style='padding:6px 10px;border-radius:6px;background:#f0f7ff;font-weight:700'>{lab}</div>"
-    html_upper += "</div>"
-    html_lower = "<div style='display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;'>"
-    for yr in years:
-        html_lower += f"<div style='padding:5px 8px;border-radius:6px;background:#fff9e6;color:#333'>{yr}</div>"
-    html_lower += "</div>"
-    st.markdown(html_upper + html_lower, unsafe_allow_html=True)
 # ========== Streamlit 页面 ==========
 st.set_page_config(page_title="流年吉凶", layout="centered")
 
@@ -892,27 +800,6 @@ if mode == "阳历生日" and query_trigger:
         render_four_pillars_two_rows(year_p, month_p, day_p, hour_p)
 
         ji, xiong = analyze_bazi(year_p, month_p, day_p, hour_p)
-
-        # -------- 大运计算 ----------
-        birth_date = datetime.date(byear, bmonth, bday)
-        year = birth_date.year
-        JIEQI_COMPLETE = [
-            (1,6),(1,20),(2,4),(2,19),(3,6),(3,21),(4,5),(4,20),
-            (5,6),(5,21),(6,6),(6,21),(7,7),(7,22),(8,7),(8,23),
-            (9,8),(9,23),(10,8),(10,23),(11,7),(11,22),(12,7),(12,22)
-        ]
-        solar_terms = []
-        for y in (year-1, year, year+1):
-            for m,d in JIEQI_COMPLETE:
-                try:
-                    solar_terms.append(datetime.date(y, m, d))
-                except Exception:
-                    pass
-
-        forward, start_age, start_months = calc_qiyun_age_by_terms(birth_date, gender, year_p[0], solar_terms)
-        dayun_list = generate_dayun_list(year_p[0], gender, month_p, forward=forward, steps=8)
-        start_year_dayun = byear + start_age
-
 
         # 改为左右两栏显示吉凶流年
         col_ji, col_xiong = st.columns(2)
