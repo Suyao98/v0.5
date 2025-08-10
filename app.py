@@ -884,6 +884,7 @@ if mode == "阳历生日" and query_trigger:
     min_val = None if bhour == -1 else adj_min
 
 try:
+    # 1. 计算四柱八字
     year_p, adj_year = year_ganzhi(byear, bmonth, bday, hour_val or 0, min_val or 0)
     day_p = day_ganzhi_by_anchor(byear, bmonth, bday, hour_val)
     mb = get_month_branch(byear, bmonth, bday)
@@ -895,7 +896,7 @@ try:
 
     ji, xiong = analyze_bazi(year_p, month_p, day_p, hour_p)
 
-    # -------- 大运计算 ----------
+    # 2. 大运计算
     birth_date = datetime.date(byear, bmonth, bday)
     year = birth_date.year
     JIEQI_COMPLETE = [
@@ -937,133 +938,64 @@ try:
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
 
+    # 3. 显示左右两栏吉凶流年
+    col_ji, col_xiong = st.columns(2)
+
+    with col_ji:
+        st.subheader("🎉 吉年")
+        if not ji:
+            st.info("无吉年（按当前规则）")
+        else:
+            order_key = lambda x: GZS_LIST.index(x) if x in GZS_LIST else 999
+            current_year = datetime.datetime.now().year
+            start = byear
+            end = 2100
+            ymap = year_ganzhi_map(start, end)
+            for gz in sorted(ji, key=order_key):
+                years = [y for y,g in ymap.items() if g == gz]
+                if not years:
+                    continue
+                years.sort()
+                past = [y for y in years if y <= current_year]
+                future = [y for y in years if y > current_year]
+                parts = []
+                for y in past:
+                    parts.append(f"{y}年")
+                for y in future:
+                    parts.append(f"<b>{y}年★</b>")
+                st.markdown(
+                    f"<div style='padding:8px;border-left:4px solid #2e7d32;background:#f1fbf1;border-radius:6px;margin-bottom:6px;color:#145214'><b>{gz}</b>: {'，'.join(parts)}</div>",
+                    unsafe_allow_html=True
+                )
+    with col_xiong:
+        st.subheader("☠️ 凶年")
+        if not xiong:
+            st.info("无凶年（按当前规则）")
+        else:
+            order_key = lambda x: GZS_LIST.index(x) if x in GZS_LIST else 999
+            current_year = datetime.datetime.now().year
+            start = byear
+            end = 2100
+            ymap = year_ganzhi_map(start, end)
+            for gz in sorted(xiong, key=order_key):
+                years = [y for y,g in ymap.items() if g == gz]
+                if not years:
+                    continue
+                years.sort()
+                past = [y for y in years if y <= current_year]
+                future = [y for y in years if y > current_year]
+                parts = []
+                for y in past:
+                    parts.append(f"{y}年")
+                for y in future:
+                    parts.append(f"<b>{y}年★</b>")
+                st.markdown(
+                    f"<div style='padding:8px;border-left:4px solid #8b0000;background:#fff6f6;border-radius:6px;margin-bottom:6px;color:#5b0000'><b>{gz}</b>: {'，'.join(parts)}</div>",
+                    unsafe_allow_html=True
+                )
+
 except Exception as e:
     st.error(f"计算出错：{e}")
-
- # 改为左右两栏显示吉凶流年
-        col_ji, col_xiong = st.columns(2)
-
-        with col_ji:
-            st.subheader("🎉 吉年")
-            if not ji:
-                st.info("无吉年（按当前规则）")
-            else:
-                order_key = lambda x: GZS_LIST.index(x) if x in GZS_LIST else 999
-                current_year = datetime.datetime.now().year
-                start = byear
-                end = 2100
-                ymap = year_ganzhi_map(start, end)
-                for gz in sorted(ji, key=order_key):
-                    years = [y for y,g in ymap.items() if g == gz]
-                    if not years:
-                        continue
-                    years.sort()
-                    past = [y for y in years if y <= current_year]
-                    future = [y for y in years if y > current_year]
-                    parts = []
-                    for y in past:
-                        parts.append(f"{y}年")
-                    for y in future:
-                        parts.append(f"<b>{y}年★</b>")
-                    st.markdown(
-                        f"<div style='padding:8px;border-left:4px solid #2e7d32;background:#f1fbf1;border-radius:6px;margin-bottom:6px;color:#145214'><b>{gz}</b>: {'，'.join(parts)}</div>",
-                        unsafe_allow_html=True
-                    )
-        with col_xiong:
-            st.subheader("☠️ 凶年")
-            if not xiong:
-                st.info("无凶年（按当前规则）")
-            else:
-                order_key = lambda x: GZS_LIST.index(x) if x in GZS_LIST else 999
-                current_year = datetime.datetime.now().year
-                start = byear
-                end = 2100
-                ymap = year_ganzhi_map(start, end)
-                for gz in sorted(xiong, key=order_key):
-                    years = [y for y,g in ymap.items() if g == gz]
-                    if not years:
-                        continue
-                    years.sort()
-                    past = [y for y in years if y <= current_year]
-                    future = [y for y in years if y > current_year]
-                    parts = []
-                    for y in past:
-                        parts.append(f"{y}年")
-                    for y in future:
-                        parts.append(f"<b>{y}年★</b>")
-                    st.markdown(
-                        f"<div style='padding:8px;border-left:4px solid #8b0000;background:#fff6f6;border-radius:6px;margin-bottom:6px;color:#5b0000'><b>{gz}</b>: {'，'.join(parts)}</div>",
-                        unsafe_allow_html=True
-                    )
-
-    except Exception as e:
-        st.error(f"计算出错：{e}")
-
-elif mode == "四柱八字" and query_trigger:
-    try:
-        ji, xiong = analyze_bazi(nianzhu.strip(), yuezhu.strip(), rizhu.strip(), shizhu.strip())
-        st.markdown("## 你输入的四柱")
-        render_four_pillars_two_rows(nianzhu.strip() or "  ", yuezhu.strip() or "  ", rizhu.strip() or "  ", shizhu.strip() or "  ")
-
-        st.markdown("---")
-
-        # 左右两栏展示吉凶流年
-        col_ji, col_xiong = st.columns(2)
-        with col_ji:
-            st.subheader("🎉 吉年")
-            if not ji:
-                st.info("无吉年（按当前规则）")
-            else:
-                order_key = lambda x: GZS_LIST.index(x) if x in GZS_LIST else 999
-                current_year = datetime.datetime.now().year
-                start = int(start_year)
-                end = 2100
-                ymap = year_ganzhi_map(start, end)
-                for gz in sorted(ji, key=order_key):
-                    years = [y for y,g in ymap.items() if g == gz]
-                    if not years:
-                        continue
-                    years.sort()
-                    past = [y for y in years if y <= current_year]
-                    future = [y for y in years if y > current_year]
-                    parts = []
-                    for y in past:
-                        parts.append(f"{y}年")
-                    for y in future:
-                        parts.append(f"<b>{y}年★</b>")
-                    st.markdown(
-                        f"<div style='padding:8px;border-left:4px solid #2e7d32;background:#f1fbf1;border-radius:6px;margin-bottom:6px;color:#145214'><b>{gz}</b>: {'，'.join(parts)}</div>",
-                        unsafe_allow_html=True
-                    )
-        with col_xiong:
-            st.subheader("☠️ 凶年")
-            if not xiong:
-                st.info("无凶年（按当前规则）")
-            else:
-                order_key = lambda x: GZS_LIST.index(x) if x in GZS_LIST else 999
-                current_year = datetime.datetime.now().year
-                start = int(start_year)
-                end = 2100
-                ymap = year_ganzhi_map(start, end)
-                for gz in sorted(xiong, key=order_key):
-                    years = [y for y,g in ymap.items() if g == gz]
-                    if not years:
-                        continue
-                    years.sort()
-                    past = [y for y in years if y <= current_year]
-                    future = [y for y in years if y > current_year]
-                    parts = []
-                    for y in past:
-                        parts.append(f"{y}年")
-                    for y in future:
-                        parts.append(f"<b>{y}年★</b>")
-                    st.markdown(
-                        f"<div style='padding:8px;border-left:4px solid #8b0000;background:#fff6f6;border-radius:6px;margin-bottom:6px;color:#5b0000'><b>{gz}</b>: {'，'.join(parts)}</div>",
-                        unsafe_allow_html=True
-                    )
-
-except Exception as e:
-        st.error(f"计算出错：{e}")
 
 
 
