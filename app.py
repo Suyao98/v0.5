@@ -716,7 +716,7 @@ st.set_page_config(page_title="流年吉凶", layout="centered")
 st.title("流年吉凶")
 
 # 主布局三栏：左侧 放“请选择”+附加选项，中间选择模式，右侧输入区
-col1, col2 = st.columns([3, 4])
+col1, col2, col3 = st.columns([3, 1, 4])
 
 with col1:
     mode = st.radio("", ["阳历生日", "四柱八字"], horizontal=True)
@@ -731,24 +731,27 @@ with col1:
         else:
             query_trigger = False
     else:
-        unknown_time = st.checkbox("时辰未知", value=False)
        # gender = st.selectbox("性别", ["男", "女"], index=0)
-       
+        if st.button("查询吉凶"):
+            query_trigger = True
+        else:
+            query_trigger = False
+
 with col2:
+    # 这里只显示模式选择，不用再显示radio
+    st.markdown("")
+
+with col3:
     # 输入区域，根据mode显示
     if mode == "阳历生日":
-        col21, col22, col23, col24 = st.columns([1,1,1,1])
-        with col21:
+        col31, col32, col33 = st.columns([1,1,1])
+        with col31:
             byear = st.number_input("出生年", min_value=1900, max_value=2100, value=1990, step=1)
-        with col22:
+        with col32:
             bmonth = st.number_input("出生月", min_value=1, max_value=12, value=5, step=1)
-        with col23:
+        with col33:
             bday = st.number_input("出生日", min_value=1, max_value=31, value=18, step=1)
-        with col24:
-            if st.button("查询吉凶"):
-                query_trigger = True
-            else:
-                query_trigger = False
+
             # 这里保留占位
             st.markdown("")
 
@@ -769,10 +772,6 @@ with col2:
         rizhu = st.text_input("日柱", max_chars=2)
         shizhu = st.text_input("时柱", max_chars=2)
         start_year = st.number_input("出生年份", min_value=1600, max_value=2100, value=1990, step=1)
-        if st.button("查询吉凶"):
-            query_trigger = True
-        else:
-            query_trigger = False
 
 # 按钮触发计算放这里
 if mode == "阳历生日" and query_trigger:
