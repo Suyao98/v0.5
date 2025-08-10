@@ -720,7 +720,7 @@ st.markdown(
 )
 
 # 主布局三栏：左侧模式选择+附加选项，右侧输入
-col1, col3 = st.columns([4, 6])
+col1, col3 = st.columns([6, 6])
 
 with col1:
     mode = st.radio("", ["阳历生日", "四柱八字"], horizontal=True)
