@@ -817,8 +817,8 @@ with col1:
 
     # 把时辰未知、真太阳时、性别和按钮放这里
     if mode == "阳历生日":
-        unknown_time = st.checkbox("时辰未知（跳过时柱）", value=False)
-        use_true_solar = st.checkbox("使用真太阳时修正", value=False)
+        unknown_time = st.checkbox("时辰未知", value=False)
+        use_true_solar = st.checkbox("真太阳时修正", value=False)
         gender = st.selectbox("性别", ["男", "女"], index=0)
         if st.button("查询吉凶"):
             query_trigger = True
@@ -842,7 +842,7 @@ with col3:
         with col31:
             byear = st.number_input("出生年", min_value=1900, max_value=2100, value=1990, step=1)
         with col32:
-            bmonth = st.number_input("出生月（数字）", min_value=1, max_value=12, value=5, step=1)
+            bmonth = st.number_input("出生月", min_value=1, max_value=12, value=5, step=1)
         with col33:
             bday = st.number_input("出生日", min_value=1, max_value=31, value=18, step=1)
         with col34:
