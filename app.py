@@ -351,26 +351,49 @@ def calc_qiyun_age_by_terms(birth_date, gender, year_gan, solar_terms_dates):
     return forward, years, months
 
 def show_dayun_two_rows(dayun_list, start_age, birth_year, ji_list, xiong_list, year_p, month_p, day_p, hour_p):
-    # prepare segments and year ranges
+    """
+    显示大运（两行）：上行为大运干支+吉/凶标记，下行为对应年份区间。
+    规则：
+      - 仍会检测大运与八字是否严格双合/双冲；
+      - 如果严格双合则把该大运加入 ji_list；严格双冲则加入 xiong_list；
+      - 显示时不再写“（双合）/（双冲）”，而是根据最终的 ji_list/xiong_list 标注“吉”或“凶”；
+      - 标注优先逻辑：若同时在 ji_list 与 xiong_list 则显示“吉/凶”，仅在 ji_list 则“吉”，仅在 xiong_list 则“凶”，都没有则不显示。
+    """
     labels = []
     years = []
     for i, gz in enumerate(dayun_list):
         seg_start = birth_year + start_age + i*10
         seg_end = seg_start + 9
-        label = gz
-        # check strict double he / chong and add to ji/xiong
-        if any(is_strict_double_he(gz, p) for p in [year_p, month_p, day_p, hour_p] if p and len(p)==2):
-            label += "（双合）"
-            if gz not in ji_list: ji_list.append(gz)
-        if any(is_strict_double_chong(gz, p) for p in [year_p, month_p, day_p, hour_p] if p and len(p)==2):
-            label += "（双冲）"
-            if gz not in xiong_list: xiong_list.append(gz)
-        labels.append(label)
+
+        # 检测严格双合/双冲并加入吉凶列表（不在标签中直接显示双合/双冲）
+        has_he = any(is_strict_double_he(gz, p) for p in [year_p, month_p, day_p, hour_p] if p and len(p)==2)
+        has_chong = any(is_strict_double_chong(gz, p) for p in [year_p, month_p, day_p, hour_p] if p and len(p)==2)
+        if has_he and gz not in ji_list:
+            ji_list.append(gz)
+        if has_chong and gz not in xiong_list:
+            xiong_list.append(gz)
+
+        # 根据最终吉凶列表决定标签状态
+        is_j = gz in ji_list
+        is_x = gz in xiong_list
+        if is_j and not is_x:
+            status_html = "<span style='display:inline-block;padding:2px 6px;border-radius:4px;background:#e8f6ea;color:#145214;margin-left:8px;font-weight:700'>吉</span>"
+        elif is_x and not is_j:
+            status_html = "<span style='display:inline-block;padding:2px 6px;border-radius:4px;background:#fff0f0;color:#8b0000;margin-left:8px;font-weight:700'>凶</span>"
+        elif is_j and is_x:
+            status_html = "<span style='display:inline-block;padding:2px 6px;border-radius:4px;background:#fff8e6;color:#8b4513;margin-left:8px;font-weight:700'>吉/凶</span>"
+        else:
+            status_html = ""
+
+        # 构建标签（干支 + 状态）
+        label_html = f"<div style='padding:6px 10px;border-radius:6px;background:#f0f7ff;font-weight:700;display:inline-flex;align-items:center'>{gz}{status_html}</div>"
+        labels.append(label_html)
         years.append(f"{seg_start}-{seg_end}")
+
     # render two rows: labels then years
     html_upper = "<div style='display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px;'>"
     for lab in labels:
-        html_upper += f"<div style='padding:6px 10px;border-radius:6px;background:#f0f7ff;font-weight:700'>{lab}</div>"
+        html_upper += lab
     html_upper += "</div>"
     html_lower = "<div style='display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;'>"
     for yr in years:
