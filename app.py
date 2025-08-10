@@ -817,14 +817,14 @@ with col1:
     if mode == "阳历生日":
         unknown_time = st.checkbox("时辰未知", value=False)
         use_true_solar = st.checkbox("真太阳时修正", value=False)
-        gender = st.selectbox("性别", ["男", "女"], index=0)
+        #gender = st.selectbox("性别", ["男", "女"], index=0)
         if st.button("查询吉凶"):
             query_trigger = True
         else:
             query_trigger = False
     else:
-        gender = st.selectbox("性别", ["男", "女"], index=0)
-        if st.button("分析吉凶"):
+       # gender = st.selectbox("性别", ["男", "女"], index=0)
+        if st.button("查询吉凶"):
             query_trigger = True
         else:
             query_trigger = False
@@ -836,15 +836,13 @@ with col2:
 with col3:
     # 输入区域，根据mode显示
     if mode == "阳历生日":
-        col31, col32, col33, col34 = st.columns([1,1,1,1])
+        col31, col32, col33 = st.columns([1,1,1])
         with col31:
             byear = st.number_input("出生年", min_value=1900, max_value=2100, value=1990, step=1)
         with col32:
             bmonth = st.number_input("出生月", min_value=1, max_value=12, value=5, step=1)
         with col33:
             bday = st.number_input("出生日", min_value=1, max_value=31, value=18, step=1)
-        with col34:
-            # 不再显示checkbox，checkbox放左侧了
 
             # 这里保留占位
             st.markdown("")
@@ -858,21 +856,21 @@ with col3:
 
         city_input = None
         if use_true_solar and not unknown_time:
-            city_input = st.text_input("输入城市名称（用于真太阳时修正）", value="北京")
+            city_input = st.text_input("输入出生城市", value="北京")
 
     else:
         nianzhu = st.text_input("年柱", max_chars=2)
         yuezhu = st.text_input("月柱", max_chars=2)
         rizhu = st.text_input("日柱", max_chars=2)
         shizhu = st.text_input("时柱", max_chars=2)
-        start_year = st.number_input("用于列出吉凶年份的起始年（例如出生年）", min_value=1600, max_value=2100, value=1990, step=1)
+        start_year = st.number_input("出生年份", min_value=1600, max_value=2100, value=1990, step=1)
 
 # 按钮触发计算放这里
 if mode == "阳历生日" and query_trigger:
     if bhour != -1 and use_true_solar:
         coords = find_city_coords(city_input)
         if coords is None:
-            st.warning(f"未找到城市“{city_input}”经纬度，默认使用东经120度")
+            st.warning(f"未找到城市“{city_input}”经纬度，默认使用东经120度，建议采用临近城市")
             lon = 120.0
         else:
             lon = coords[1]
