@@ -805,51 +805,81 @@ def show_dayun_two_rows(dayun_list, start_age, birth_year, ji_list, xiong_list, 
 
 # ========== Streamlit 页面 ==========
 st.set_page_config(page_title="流年吉凶", layout="centered")
-col_a, col_b = st.columns([1,3])
-with col_a:
+
+st.title("流年吉凶")
+
+# 一行显示：请选择 + 选择模式 + 输入区（阳历生日/四柱八字）
+col1, col2, col3 = st.columns([1, 3, 7])
+
+with col1:
     st.markdown("**请选择**")
 
-with col_b:
+with col2:
     mode = st.radio("", ["阳历生日", "四柱八字"], horizontal=True)
 
-    # 把时辰未知、真太阳时、性别、按钮放这儿
+with col3:
     if mode == "阳历生日":
-        unknown_time = st.checkbox("时辰未知（跳过时柱）", value=False)
-        use_true_solar = st.checkbox("使用真太阳时修正", value=False)
-        gender = st.selectbox("性别", ["男", "女"], index=0)
-        if st.button("查询吉凶"):
-            # 你后面阳历生日查询代码不变
-            pass
-    else:
-        gender = st.selectbox("性别", ["男", "女"], index=0)  # 四柱也显示性别吧？
-        if st.button("分析吉凶"):
-            # 四柱分析代码不变
-            pass
+        # 阳历生日输入
+        col31, col32, col33, col34 = st.columns([1,1,1,1])
+        with col31:
+            byear = st.number_input("出生年", min_value=1900, max_value=2100, value=1990, step=1)
+        with col32:
+            bmonth = st.number_input("出生月（数字）", min_value=1, max_value=12, value=5, step=1)
+        with col33:
+            bday = st.number_input("出生日", min_value=1, max_value=31, value=18, step=1)
+        with col34:
+            unknown_time = st.checkbox("时辰未知（跳过时柱）", value=False)
 
-# 阳历或四柱输入区域，单独分开放，不在上面col_b里
-if mode == "阳历生日":
-    col1, col2 = st.columns([2,1])
-    with col1:
-        byear = st.number_input("出生年", min_value=1900, max_value=2100, value=1990, step=1)
-        bmonth = st.number_input("出生月（数字）", min_value=1, max_value=12, value=5, step=1)
-        bday = st.number_input("出生日", min_value=1, max_value=31, value=18, step=1)
-    with col2:
+        use_true_solar = st.checkbox("使用真太阳时修正", value=False)
         if not unknown_time:
             bhour = st.number_input("小时（0-23）", min_value=0, max_value=23, value=8, step=1)
             bmin = st.number_input("分钟（0-59）", min_value=0, max_value=59, value=0, step=1)
         else:
             bhour = -1
             bmin = 0
-    city_input = None
-    if use_true_solar and not unknown_time:
-        city_input = st.text_input("输入城市名称（用于真太阳时修正）", value="北京")
-else:
-    st.markdown("请直接输入四柱八字（例如：庚午、辛巳），时柱可填“不知道”以跳过。")
-    nianzhu = st.text_input("年柱", max_chars=2)
-    yuezhu = st.text_input("月柱", max_chars=2)
-    rizhu = st.text_input("日柱", max_chars=2)
-    shizhu = st.text_input("时柱", max_chars=2)
-    start_year = st.number_input("用于列出吉凶年份的起始年（例如出生年）", min_value=1600, max_value=2100, value=1990, step=1)
+
+        city_input = None
+        if use_true_solar and not unknown_time:
+            city_input = st.text_input("输入城市名称（用于真太阳时修正）", value="北京")
+
+        gender = st.selectbox("性别", ["男", "女"], index=0)
+
+    else:
+        # 四柱八字输入
+        nianzhu = st.text_input("年柱", max_chars=2)
+        yuezhu = st.text_input("月柱", max_chars=2)
+        rizhu = st.text_input("日柱", max_chars=2)
+        shizhu = st.text_input("时柱", max_chars=2)
+        start_year = st.number_input("用于列出吉凶年份的起始年（例如出生年）", min_value=1600, max_value=2100, value=1990, step=1)
+
+# 按钮触发计算
+if mode == "阳历生日":
+    if st.button("查询吉凶"):
+        if bhour != -1 and use_true_solar:
+            coords = find_city_coords(city_input)
+            if coords is None:
+                st.warning(f"未找到城市“{city_input}”经纬度，默认使用东经120度")
+                lon = 120.0
+            else:
+                lon = coords[1]
+            adj_hour, adj_min = corrected_hour_minute(bhour, bmin, lon)
+        else:
+            adj_hour, adj_min = bhour, bmin
+
+        hour_val = None if bhour == -1 else adj_hour
+        min_val = None if bhour == -1 else adj_min
+
+        try:
+            year_p, adj_year = year_ganzhi(byear, bmonth, bday, hour_val or 0, min_val or 0)
+            day_p = day_ganzhi_by_anchor(byear, bmonth, bday, hour_val)
+            mb = get_month_branch(byear, bmonth, bday)
+            month_p = month_stem_by_fihu_dun(year_p[0], mb)
+            hour_p = "不知道" if hour_val is None else time_ganzhi_by_rule(day_p, hour_val, min_val or 0)
+
+            st.markdown("## 四柱八字")
+            render_four_pillars_two_rows(year_p, month_p, day_p, hour_p)
+
+            ji, xiong = analyze_bazi(year_p, month_p, day_p, hour_p)
 
             # -------- 大运计算 ----------
             birth_date = datetime.date(byear, bmonth, bday)
