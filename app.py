@@ -3,7 +3,6 @@ import datetime
 from datetime import date, timedelta
 import streamlit as st
 import math
-import sxtwl 
 
 # ========== 全国市级经纬度（KEY 为常用城市名，不带“市/区”后缀；如需可扩展） ==========
 # 说明：数百条数据，覆盖全国地级市常用名称（含直辖市、自治州、盟等）
@@ -13,7 +12,7 @@ CITY_COORDS = {
     "上海": (31.2304, 121.4737),
     "天津": (39.3434, 117.3616),
     "重庆": (29.4316, 106.9123),
-
+    
     # 河北
     "石家庄": (38.0428, 114.5149),
     "唐山": (39.6309, 118.1802),
@@ -450,8 +449,9 @@ WUXING_COLOR = {
     "水": "#1565c0"
 }
 
-# ========== 合/冲 规则 ==========
+# ========== 合/冲 规则（你之前的规则） ==========
 gan_he = {"甲":"己","己":"甲","乙":"庚","庚":"乙","丙":"辛","辛":"丙","丁":"壬","壳":"壬","壬":"丁","戊":"癸","癸":"戊"}
+# NOTE: 保留你原始的 gan_chong（已删除戊/己冲）
 gan_chong = {"甲":"庚","庚":"甲","乙":"辛","辛":"乙","丙":"壬","壬":"丙","丁":"癸","癸":"丁"}
 zhi_he = {"子":"丑","丑":"子","寅":"亥","亥":"寅","卯":"戌","戌":"卯","辰":"酉","酉":"辰","巳":"申","申":"巳","午":"未","未":"午"}
 zhi_chong = {dz: dizhi[(i+6)%12] for i, dz in enumerate(dizhi)}
@@ -509,27 +509,89 @@ def day_ganzhi_by_anchor(y,m,d,h=None):
     idx = (ANCHOR_INDEX + delta) % 60
     return GZS_LIST[idx]
 
-# ======= 用 sxtwl 精确获取立春 =======
+# --------- 这里是替换后的节气（立春）计算函数，尝试兼容 sxtwl 不同版本 ---------
 def get_li_chun_datetime(year):
     """
-    获取指定年份真实立春时间（北京时间）
+    返回指定年份的“立春”时刻（本函数尽力尝试使用 sxtwl 的多种可能接口）。
+    若环境没有安装 sxtwl 或无法正确调用，将回退到近似值：year-02-04 00:00。
     """
-    lunar = sxtwl.Lunar()
-    # 节气索引，立春是序号 3（0 小寒，1 大寒，2 立春? 实际上是第 3 个节气，索引从 0 开始需调整）
-    # sxtwl 使用 24 节气编号，立春是 3
-    jd = lunar.getJieQiJD(year * 100 + 3)  # year*100+节气编号
-    dd = sxtwl.JD2DD(jd + 0.5)  # 转为公历日期整数
-    y = dd // 10000
-    m = (dd % 10000) // 100
-    d = dd % 100
-    return datetime.datetime(y, m, d, 0, 0)
+    try:
+        import sxtwl
+    except Exception:
+        # sxtwl 不可用 -> 使用近似值，避免抛错
+        return datetime.datetime(year, 2, 4, 0, 0)
 
+    # Try various APIs that different sxtwl versions might expose
+    try:
+        # 1) 常见：sxtwl.getJieQiJD(yq) 或 sxtwl.getJieQiJD(year*100 + qi_index)
+        if hasattr(sxtwl, "getJieQiJD"):
+            try:
+                jd = sxtwl.getJieQiJD(year * 100 + 3)  # 3 通常为立春（部分版本）
+                if jd:
+                    if hasattr(sxtwl, "JD2DD"):
+                        dd = sxtwl.JD2DD(jd + 0.5)
+                        y = dd // 10000
+                        m = (dd % 10000) // 100
+                        d = dd % 100
+                        return datetime.datetime(int(y), int(m), int(d), 0, 0)
+            except Exception:
+                pass
+
+        # 2) 有些版本把 getJieQi 等放到模块属性名不同或类中，尝试 Lunar 类（若存在）
+        if hasattr(sxtwl, "Lunar"):
+            try:
+                lunar = sxtwl.Lunar()
+                if hasattr(lunar, "getJieQiJD"):
+                    jd = lunar.getJieQiJD(year * 100 + 3)
+                    if jd and hasattr(sxtwl, "JD2DD"):
+                        dd = sxtwl.JD2DD(jd + 0.5)
+                        y = dd // 10000
+                        m = (dd % 10000) // 100
+                        d = dd % 100
+                        return datetime.datetime(int(y), int(m), int(d), 0, 0)
+            except Exception:
+                pass
+
+        # 3) 有些版本使用 sxtwl.getJQ 或者 sxtwl.getJieQi 等，尝试这些名称
+        for fn_name in ("getJQ", "getJieQi", "getJieQiByYear", "jieqi"):
+            if hasattr(sxtwl, fn_name):
+                try:
+                    fn = getattr(sxtwl, fn_name)
+                    # 某些函数可能返回浮点儒略日或日期元组
+                    res = fn(year)
+                    # 如果返回 dict/列表/tuple，尝试从中找立春（关键字/位置可能不同）
+                    # 这里做较宽松的尝试：若返回值是数值，视作儒略日
+                    if isinstance(res, (int, float)):
+                        if hasattr(sxtwl, "JD2DD"):
+                            dd = sxtwl.JD2DD(res + 0.5)
+                            y = dd // 10000
+                            m = (dd % 10000) // 100
+                            d = dd % 100
+                            return datetime.datetime(int(y), int(m), int(d), 0, 0)
+                    # 若返回复合结构，尝试检索包含立春信息（按经验此处难以通用）
+                except Exception:
+                    continue
+
+    except Exception:
+        # 若上面任何一步内部报错，统一回退
+        pass
+
+    # 最后回退：近似值（2月4日）
+    return datetime.datetime(year, 2, 4, 0, 0)
+
+# year_ganzhi 使用 get_li_chun_datetime
 def year_ganzhi(year, month, day, hour=0, minute=0):
     dt = datetime.datetime(year, month, day, hour, minute)
     lichun = get_li_chun_datetime(year)
     adj_year = year if dt >= lichun else year-1
     return GZS_LIST[(adj_year - 1984) % 60], adj_year
 
+# 近似节气划分月支（寅月起）
+JIEQI = [
+    (2,4,"寅"), (3,6,"卯"), (4,5,"辰"), (5,6,"巳"), (6,6,"午"),
+    (7,7,"未"), (8,7,"申"), (9,7,"酉"), (10,8,"戌"), (11,7,"亥"),
+    (12,7,"子"), (1,6,"丑"),
+]
 def get_month_branch(year, month, day):
     bd = date(year, month, day)
     for i,(m,d,branch) in enumerate(JIEQI):
@@ -716,34 +778,141 @@ def corrected_hour_minute(hour, minute, longitude):
     adj_hour = int(total_minutes // 60)
     adj_min = int(total_minutes % 60)
     return adj_hour, adj_min
+
+# ========== 大运函数（保持你原有逻辑，仅妥善集成） ==========
+def is_strict_double_he(gz1, gz2):
+    gan_he_pairs = [("甲","己"),("己","甲"),("乙","庚"),("庚","乙"),
+                    ("丙","辛"),("辛","丙"),("丁","壬"),("壬","丁"),
+                    ("戊","癸"),("癸","戊")]
+    dz_he_pairs = [("子","丑"),("丑","子"),("寅","亥"),("亥","寅"),
+                   ("卯","戌"),("戌","卯"),("辰","酉"),("酉","辰"),
+                   ("巳","申"),("申","巳"),("午","未"),("未","午")]
+    if not gz1 or not gz2 or len(gz1) < 2 or len(gz2) < 2:
+        return False
+    gan1, dz1 = gz1[0], gz1[1]
+    gan2, dz2 = gz2[0], gz2[1]
+    return (gan1, gan2) in gan_he_pairs and (dz1, dz2) in dz_he_pairs
+
+def is_strict_double_chong(gz1, gz2):
+    dz_chong_pairs = [("子","午"),("午","子"),
+                      ("丑","未"),("未","丑"),
+                      ("寅","申"),("申","寅"),
+                      ("卯","酉"),("酉","卯"),
+                      ("辰","戌"),("戌","辰"),
+                      ("巳","亥"),("亥","巳")]
+    if not gz1 or not gz2 or len(gz1) < 2 or len(gz2) < 2:
+        return False
+    dz1, dz2 = gz1[1], gz2[1]
+    return (dz1, dz2) in dz_chong_pairs
+
+def generate_dayun_list(year_gan, gender, month_pillar, forward=True, steps=8):
+    if month_pillar not in GZS_LIST:
+        base_index = 0
+    else:
+        base_index = GZS_LIST.index(month_pillar)
+    result = []
+    for i in range(steps):
+        idx = (base_index + i + 1) % 60 if forward else (base_index - (i+1)) % 60
+        result.append(GZS_LIST[idx])
+    return result
+
+def calc_qiyun_age_by_terms(birth_date, gender, year_gan, solar_terms_dates):
+    yang_gans = ["甲","丙","戊","庚","壬"]
+    is_yang_year = year_gan in yang_gans
+    if (is_yang_year and gender == "男") or (not is_yang_year and gender == "女"):
+        forward = True
+    else:
+        forward = False
+
+    terms_sorted = sorted(solar_terms_dates)
+    if forward:
+        next_terms = [d for d in terms_sorted if d > birth_date]
+        if not next_terms:
+            next_term = terms_sorted[0].replace(year=birth_date.year+1)
+        else:
+            next_term = next_terms[0]
+        delta_days = (next_term - birth_date).days
+    else:
+        prev_terms = [d for d in terms_sorted if d <= birth_date]
+        if not prev_terms:
+            prev_term = terms_sorted[-1].replace(year=birth_date.year-1)
+        else:
+            prev_term = prev_terms[-1]
+        delta_days = (birth_date - prev_term).days
+
+    years = int(delta_days // 3)
+    rem = delta_days % 3
+    months = int((rem / 3.0) * 12)
+    return forward, years, months
+
+def show_dayun_two_rows(dayun_list, start_age, birth_year, ji_list, xiong_list, year_p, month_p, day_p, hour_p):
+    labels = []
+    years = []
+    for i, gz in enumerate(dayun_list):
+        seg_start = birth_year + start_age + i*10
+        seg_end = seg_start + 9
+        label = gz
+        if any(is_strict_double_he(gz, p) for p in [year_p, month_p, day_p, hour_p] if p and len(p)==2):
+            label += "（双合）"
+            if gz not in ji_list: ji_list.append(gz)
+        if any(is_strict_double_chong(gz, p) for p in [year_p, month_p, day_p, hour_p] if p and len(p)==2):
+            label += "（双冲）"
+            if gz not in xiong_list: xiong_list.append(gz)
+        labels.append(label)
+        years.append(f"{seg_start}-{seg_end}")
+    html_upper = "<div style='display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px;'>"
+    for lab in labels:
+        html_upper += f"<div style='padding:6px 10px;border-radius:6px;background:#f0f7ff;font-weight:700'>{lab}</div>"
+    html_upper += "</div>"
+    html_lower = "<div style='display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;'>"
+    for yr in years:
+        html_lower += f"<div style='padding:5px 8px;border-radius:6px;background:#fff9e6;color:#333'>{yr}</div>"
+    html_lower += "</div>"
+    st.markdown(html_upper + html_lower, unsafe_allow_html=True)
+
 # ========== Streamlit 页面 ==========
 st.set_page_config(page_title="流年吉凶", layout="centered")
 
-# 居中美化标题
-st.markdown(
-    "<h1 style='text-align:center; color:#2e7d32; font-weight:900;'>🌟 流年吉凶 🌟</h1>",
-    unsafe_allow_html=True
-)
+st.title("流年吉凶")
 
-# 主布局三栏：左侧模式选择+附加选项，右侧输入
-col1, col3 = st.columns([4, 6])
+# 主布局三栏：左侧 放选项，中间选择模式，右侧输入区
+col1, col2, col3 = st.columns([3, 1, 4])
 
 with col1:
     mode = st.radio("", ["阳历生日", "四柱八字"], horizontal=True)
 
+    # 把时辰未知、真太阳时、性别和按钮放这里
     if mode == "阳历生日":
-        c1, c2 = st.columns(2)
+        # 将两项放一行
+        c1, c2 = st.columns([1,1])
         with c1:
             unknown_time = st.checkbox("时辰未知", value=False)
         with c2:
             use_true_solar = st.checkbox("真太阳时修正", value=False)
+
+        gender = st.selectbox("性别", ["男", "女"], index=0)
+
+        # 按钮放在左侧底部（整个左栏）
+        if st.button("查询吉凶"):
+            query_trigger = True
+        else:
+            query_trigger = False
     else:
-        unknown_time = False
-        use_true_solar = False
+        # 四柱模式也保留性别选择
+        gender = st.selectbox("性别", ["男", "女"], index=0)
+        if st.button("查询吉凶"):
+            query_trigger = True
+        else:
+            query_trigger = False
+
+with col2:
+    # 这里只显示模式选择占位
+    st.markdown("")
 
 with col3:
+    # 输入区域，根据mode显示
     if mode == "阳历生日":
-        col31, col32, col33 = st.columns(3)
+        col31, col32, col33 = st.columns([1,1,1])
         with col31:
             byear = st.number_input("出生年", min_value=1900, max_value=2100, value=1990, step=1)
         with col32:
@@ -752,15 +921,15 @@ with col3:
             bday = st.number_input("出生日", min_value=1, max_value=31, value=18, step=1)
 
         if not unknown_time:
-            bhour = st.number_input("小时", min_value=0, max_value=23, value=8, step=1)
-            bmin = st.number_input("分钟", min_value=0, max_value=59, value=0, step=1)
+            bhour = st.number_input("小时（0-23）", min_value=0, max_value=23, value=8, step=1)
+            bmin = st.number_input("分钟（0-59）", min_value=0, max_value=59, value=0, step=1)
         else:
             bhour = -1
             bmin = 0
 
         city_input = None
         if use_true_solar and not unknown_time:
-            city_input = st.text_input("出生城市", value="北京")
+            city_input = st.text_input("输入出生城市", value="北京")
 
     else:
         nianzhu = st.text_input("年柱", max_chars=2)
@@ -768,10 +937,6 @@ with col3:
         rizhu = st.text_input("日柱", max_chars=2)
         shizhu = st.text_input("时柱", max_chars=2)
         start_year = st.number_input("出生年份", min_value=1600, max_value=2100, value=1990, step=1)
-
-# 查询按钮放底部居中
-st.markdown("<br>", unsafe_allow_html=True)
-query_trigger = st.button("🔍 查询吉凶", use_container_width=True)
 
 # 按钮触发计算放这里
 if mode == "阳历生日" and query_trigger:
@@ -925,4 +1090,3 @@ elif mode == "四柱八字" and query_trigger:
 
     except Exception as e:
         st.error(f"计算出错：{e}")
-
