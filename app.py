@@ -1062,7 +1062,7 @@ elif mode == "四柱八字" and query_trigger:
                         unsafe_allow_html=True
                     )
 
-    except Exception as e:
+except Exception as e:
         st.error(f"计算出错：{e}")
 
 
