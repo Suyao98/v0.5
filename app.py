@@ -921,22 +921,56 @@ if mode == "阳历生日" and query_trigger:
         for i, gz in enumerate(dayun_list):
             seg_start = int(byear + start_age + i*10)
             seg_end = seg_start + 9
-            # 判定吉凶
-            is_ji = any(is_strict_double_he(gz, p) for p in [year_p, month_p, day_p, hour_p] if p and len(p)==2)
-            is_xiong = any(is_strict_double_chong(gz, p) for p in [year_p, month_p, day_p, hour_p] if p and len(p)==2)
-            label = f"{gz} {seg_start}-{seg_end}"
-            if is_ji:
-                html += f"<div style='padding:10px 16px;border-radius:8px;background:#d0f0c0;color:#2e7d32;font-weight:700;min-width:100px;text-align:center'>{label} 吉</div>"
-                if gz not in ji:
-                    ji.append(gz)
-            elif is_xiong:
-                html += f"<div style='padding:10px 16px;border-radius:8px;background:#f8d7da;color:#8b0000;font-weight:700;min-width:100px;text-align:center'>{label} 凶</div>"
-                if gz not in xiong:
-                    xiong.append(gz)
-            else:
-                html += f"<div style='padding:10px 16px;border-radius:8px;background:#f0f7ff;color:#333;font-weight:700;min-width:100px;text-align:center'>{label}</div>"
-        html += "</div>"
-        st.markdown(html, unsafe_allow_html=True)
+          # 修改大运排盘显示，附加年份，双合吉色，双冲凶色
+        html = "<div style='display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px;'>"
+        for i, gz in enumerate(dayun_list):
+            seg_start = int(byear + start_age + i*10)
+            seg_end = seg_start + 9
+         # ----------- 大运吉凶判断修改版 -------------
+
+# 从四柱中提取所有严格双合和双冲干支列表
+def extract_double_he_chong(pillars):
+    he_list = []
+    chong_list = []
+    for p in pillars:
+        if p and len(p) == 2:
+            # 遍历四柱中每个柱，与其他柱进行严格双合和双冲判断
+            # 这里保证提取4个双合和4个双冲，先找所有严格双合，所有严格双冲
+            for other in pillars:
+                if other == p or other is None or len(other) != 2:
+                    continue
+                if is_strict_double_he(p, other) and p not in he_list:
+                    he_list.append(p)
+                if is_strict_double_chong(p, other) and p not in chong_list:
+                    chong_list.append(p)
+    return he_list, chong_list
+
+pillars = [year_p, month_p, day_p, hour_p]
+he_pairs, chong_pairs = extract_double_he_chong(pillars)
+
+html = "<div style='display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px;'>"
+for i, gz in enumerate(dayun_list):
+    seg_start = int(byear + start_age + i*10)
+    seg_end = seg_start + 9
+    label = f"{gz} {seg_start}-{seg_end}"
+
+    # 判断大运干支是否完全匹配四柱双合或双冲中的任意一个
+    is_ji = any(gz == he for he in he_pairs)
+    is_xiong = any(gz == chong for chong in chong_pairs)
+
+    if is_ji:
+        html += f"<div style='padding:10px 16px;border-radius:8px;background:#d0f0c0;color:#2e7d32;font-weight:700;min-width:100px;text-align:center'>{label} 吉</div>"
+        if gz not in ji:
+            ji.append(gz)
+    elif is_xiong:
+        html += f"<div style='padding:10px 16px;border-radius:8px;background:#f8d7da;color:#8b0000;font-weight:700;min-width:100px;text-align:center'>{label} 凶</div>"
+        if gz not in xiong:
+            xiong.append(gz)
+    else:
+        html += f"<div style='padding:10px 16px;border-radius:8px;background:#f0f7ff;color:#333;font-weight:700;min-width:100px;text-align:center'>{label}</div>"
+html += "</div>"
+st.markdown(html, unsafe_allow_html=True)
+
 
         # 改为左右两栏显示吉凶流年
         col_ji, col_xiong = st.columns(2)
