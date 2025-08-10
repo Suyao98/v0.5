@@ -804,21 +804,12 @@ def show_dayun_two_rows(dayun_list, start_age, birth_year, ji_list, xiong_list, 
     st.markdown(html_upper + html_lower, unsafe_allow_html=True)
 
 # ========== Streamlit 页面 ==========
-def main():
-    st.set_page_config(page_title="流年吉凶排盘", layout="wide")
-    st.title("流年吉凶")
-
-    # 输入区域（并排）
-    col1, col2, col3, col4 = st.columns([1.3,1,1,1])
-    with col1:
-        st.write("请选择：")
-        gender = st.radio("性别", options=["男","女"], horizontal=True)
-    with col2:
-        birth_date = st.date_input("阳历生日", value=datetime.date(1990,1,1))
-    with col3:
-        birth_hour = st.number_input("出生时辰（24小时制）", min_value=0, max_value=23, value=0, step=1)
-    with col4:
-        birth_minute = st.number_input("出生分钟", min_value=0, max_value=59, value=0, step=1)
+st.set_page_config(page_title="流年吉凶", layout="centered")
+col_a, col_b = st.columns([1,3])
+with col_a:
+    st.markdown("**请选择**")
+with col_b:
+    mode = st.radio("", ["阳历生日", "四柱八字"], horizontal=True)
 
 # 阳历或四柱输入区域
 if mode == "阳历生日":
