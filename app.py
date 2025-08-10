@@ -3,6 +3,7 @@ import datetime
 from datetime import date, timedelta
 import streamlit as st
 import math
+import sxtwl 
 
 # ========== 全国市级经纬度（KEY 为常用城市名，不带“市/区”后缀；如需可扩展） ==========
 # 说明：数百条数据，覆盖全国地级市常用名称（含直辖市、自治州、盟等）
@@ -449,9 +450,8 @@ WUXING_COLOR = {
     "水": "#1565c0"
 }
 
-# ========== 合/冲 规则（你之前的规则） ==========
+# ========== 合/冲 规则 ==========
 gan_he = {"甲":"己","己":"甲","乙":"庚","庚":"乙","丙":"辛","辛":"丙","丁":"壬","壳":"壬","壬":"丁","戊":"癸","癸":"戊"}
-# NOTE: 保留你原始的 gan_chong（已删除戊/己冲）
 gan_chong = {"甲":"庚","庚":"甲","乙":"辛","辛":"乙","丙":"壬","壬":"丙","丁":"癸","癸":"丁"}
 zhi_he = {"子":"丑","丑":"子","寅":"亥","亥":"寅","卯":"戌","戌":"卯","辰":"酉","酉":"辰","巳":"申","申":"巳","午":"未","未":"午"}
 zhi_chong = {dz: dizhi[(i+6)%12] for i, dz in enumerate(dizhi)}
@@ -509,8 +509,20 @@ def day_ganzhi_by_anchor(y,m,d,h=None):
     idx = (ANCHOR_INDEX + delta) % 60
     return GZS_LIST[idx]
 
+# ======= 用 sxtwl 精确获取立春 =======
 def get_li_chun_datetime(year):
-    return datetime.datetime(year,2,4,0,0)
+    """
+    获取指定年份真实立春时间（北京时间）
+    """
+    lunar = sxtwl.Lunar()
+    # 节气索引，立春是序号 3（0 小寒，1 大寒，2 立春? 实际上是第 3 个节气，索引从 0 开始需调整）
+    # sxtwl 使用 24 节气编号，立春是 3
+    jd = lunar.getJieQiJD(year * 100 + 3)  # year*100+节气编号
+    dd = sxtwl.JD2DD(jd + 0.5)  # 转为公历日期整数
+    y = dd // 10000
+    m = (dd % 10000) // 100
+    d = dd % 100
+    return datetime.datetime(y, m, d, 0, 0)
 
 def year_ganzhi(year, month, day, hour=0, minute=0):
     dt = datetime.datetime(year, month, day, hour, minute)
@@ -518,12 +530,6 @@ def year_ganzhi(year, month, day, hour=0, minute=0):
     adj_year = year if dt >= lichun else year-1
     return GZS_LIST[(adj_year - 1984) % 60], adj_year
 
-# 近似节气划分月支（寅月起）
-JIEQI = [
-    (2,4,"寅"), (3,6,"卯"), (4,5,"辰"), (5,6,"巳"), (6,6,"午"),
-    (7,7,"未"), (8,7,"申"), (9,7,"酉"), (10,8,"戌"), (11,7,"亥"),
-    (12,7,"子"), (1,6,"丑"),
-]
 def get_month_branch(year, month, day):
     bd = date(year, month, day)
     for i,(m,d,branch) in enumerate(JIEQI):
