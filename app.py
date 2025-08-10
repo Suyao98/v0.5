@@ -808,7 +808,7 @@ st.set_page_config(page_title="流年吉凶", layout="centered")
 st.title("流年吉凶")
 
 # 主布局三栏：左侧 放“请选择”+附加选项，中间选择模式，右侧输入区
-col1, col2, col3 = st.columns([3, 1, 7])
+col1, col2, col3 = st.columns([3, 1, 6])
 
 with col1:
     mode = st.radio("", ["阳历生日", "四柱八字"], horizontal=True)
