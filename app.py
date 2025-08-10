@@ -607,7 +607,7 @@ def get_month_branch(year, month, day):
         # 如果当前节气是 (2, 4, "寅") 立春，且生日 < 2月4日，则仍归前一节气（上一年腊月/丑月）
         if branch == "寅" and ((month == 1 and day > 5) or (month == 2 and day < 4)):
             return "丑"
-       if branch == "寅" and (month == 1 and day < 6 ):
+        if branch == "寅" and (month == 1 and day < 6 ):
             return "子"
 
         if dt <= bd < dt_next:
