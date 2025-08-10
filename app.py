@@ -851,35 +851,6 @@ else:
     shizhu = st.text_input("时柱", max_chars=2)
     start_year = st.number_input("用于列出吉凶年份的起始年（例如出生年）", min_value=1600, max_value=2100, value=1990, step=1)
 
-# 按钮触发计算
-if mode == "阳历生日":
-    if st.button("查询吉凶"):
-        if bhour != -1 and use_true_solar:
-            coords = find_city_coords(city_input)
-            if coords is None:
-                st.warning(f"未找到城市“{city_input}”经纬度，默认使用东经120度")
-                lon = 120.0
-            else:
-                lon = coords[1]
-            adj_hour, adj_min = corrected_hour_minute(bhour, bmin, lon)
-        else:
-            adj_hour, adj_min = bhour, bmin
-
-        hour_val = None if bhour == -1 else adj_hour
-        min_val = None if bhour == -1 else adj_min
-
-        try:
-            year_p, adj_year = year_ganzhi(byear, bmonth, bday, hour_val or 0, min_val or 0)
-            day_p = day_ganzhi_by_anchor(byear, bmonth, bday, hour_val)
-            mb = get_month_branch(byear, bmonth, bday)
-            month_p = month_stem_by_fihu_dun(year_p[0], mb)
-            hour_p = "不知道" if hour_val is None else time_ganzhi_by_rule(day_p, hour_val, min_val or 0)
-
-            st.markdown("## 四柱八字")
-            render_four_pillars_two_rows(year_p, month_p, day_p, hour_p)
-
-            ji, xiong = analyze_bazi(year_p, month_p, day_p, hour_p)
-
             # -------- 大运计算 ----------
             birth_date = datetime.date(byear, bmonth, bday)
             year = birth_date.year
