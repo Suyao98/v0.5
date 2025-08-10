@@ -716,7 +716,7 @@ st.set_page_config(page_title="流年吉凶", layout="centered")
 st.title("流年吉凶")
 
 # 主布局三栏：左侧 放“请选择”+附加选项，中间选择模式，右侧输入区
-col1, col2, col3 = st.columns([3, 1, 4])
+col1, col2 = st.columns([3, 4])
 
 with col1:
     mode = st.radio("", ["阳历生日", "四柱八字"], horizontal=True)
@@ -738,18 +738,14 @@ with col1:
             query_trigger = False
 
 with col2:
-    # 这里只显示模式选择，不用再显示radio
-    st.markdown("")
-
-with col3:
     # 输入区域，根据mode显示
     if mode == "阳历生日":
-        col31, col32, col33 = st.columns([1,1,1])
-        with col31:
+        col21, col22, col23 = st.columns([1,1,1])
+        with col21:
             byear = st.number_input("出生年", min_value=1900, max_value=2100, value=1990, step=1)
-        with col32:
+        with col22:
             bmonth = st.number_input("出生月", min_value=1, max_value=12, value=5, step=1)
-        with col33:
+        with col23:
             bday = st.number_input("出生日", min_value=1, max_value=31, value=18, step=1)
 
             # 这里保留占位
