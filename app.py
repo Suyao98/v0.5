@@ -873,46 +873,31 @@ def show_dayun_two_rows(dayun_list, start_age, birth_year, ji_list, xiong_list, 
 # ========== Streamlit 页面 ==========
 st.set_page_config(page_title="流年吉凶", layout="centered")
 
-st.title("流年吉凶")
+# 居中美化标题
+st.markdown(
+    "<h1 style='text-align:center; color:#2e7d32; font-weight:900;'>🌟 流年吉凶 🌟</h1>",
+    unsafe_allow_html=True
+)
 
-# 主布局三栏：左侧 放选项，中间选择模式，右侧输入区
-col1, col2, col3 = st.columns([3, 1, 4])
+# 主布局三栏：左侧模式选择+附加选项，右侧输入
+col1, col3 = st.columns([4, 6])
 
 with col1:
     mode = st.radio("", ["阳历生日", "四柱八字"], horizontal=True)
 
-    # 把时辰未知、真太阳时、性别和按钮放这里
     if mode == "阳历生日":
-        # 将两项放一行
-        c1, c2 = st.columns([1,1])
+        c1, c2 = st.columns(2)
         with c1:
             unknown_time = st.checkbox("时辰未知", value=False)
         with c2:
             use_true_solar = st.checkbox("真太阳时修正", value=False)
-
-        gender = st.selectbox("性别", ["男", "女"], index=0)
-
-        # 按钮放在左侧底部（整个左栏）
-        if st.button("查询吉凶"):
-            query_trigger = True
-        else:
-            query_trigger = False
     else:
-        # 四柱模式也保留性别选择
-        gender = st.selectbox("性别", ["男", "女"], index=0)
-        if st.button("查询吉凶"):
-            query_trigger = True
-        else:
-            query_trigger = False
-
-with col2:
-    # 这里只显示模式选择占位
-    st.markdown("")
+        unknown_time = False
+        use_true_solar = False
 
 with col3:
-    # 输入区域，根据mode显示
     if mode == "阳历生日":
-        col31, col32, col33 = st.columns([1,1,1])
+        col31, col32, col33 = st.columns(3)
         with col31:
             byear = st.number_input("出生年", min_value=1900, max_value=2100, value=1990, step=1)
         with col32:
@@ -921,15 +906,15 @@ with col3:
             bday = st.number_input("出生日", min_value=1, max_value=31, value=18, step=1)
 
         if not unknown_time:
-            bhour = st.number_input("小时（0-23）", min_value=0, max_value=23, value=8, step=1)
-            bmin = st.number_input("分钟（0-59）", min_value=0, max_value=59, value=0, step=1)
+            bhour = st.number_input("小时", min_value=0, max_value=23, value=8, step=1)
+            bmin = st.number_input("分钟", min_value=0, max_value=59, value=0, step=1)
         else:
             bhour = -1
             bmin = 0
 
         city_input = None
         if use_true_solar and not unknown_time:
-            city_input = st.text_input("输入出生城市", value="北京")
+            city_input = st.text_input("出生城市", value="北京")
 
     else:
         nianzhu = st.text_input("年柱", max_chars=2)
@@ -937,6 +922,10 @@ with col3:
         rizhu = st.text_input("日柱", max_chars=2)
         shizhu = st.text_input("时柱", max_chars=2)
         start_year = st.number_input("出生年份", min_value=1600, max_value=2100, value=1990, step=1)
+
+# 查询按钮放底部居中
+st.markdown("<br>", unsafe_allow_html=True)
+query_trigger = st.button("🔍 查询吉凶", use_container_width=True)
 
 # 按钮触发计算放这里
 if mode == "阳历生日" and query_trigger:
